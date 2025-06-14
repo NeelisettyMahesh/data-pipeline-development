@@ -5,51 +5,67 @@ from sklearn.compose import ColumnTransformer
 from sklearn.preprocessing import StandardScaler, OneHotEncoder
 from sklearn.impute import SimpleImputer
 
-# Step 1: Load your dataset
-# Replace with your CSV file path
+# 🏷️ Define your target column name here
+TARGET_COLUMN = "target"  # Change this to any column name if needed
+
+# Step 1: Load the dataset
 data = pd.read_csv("data.csv")
 
 # Step 2: Separate features and target
-X = data.drop("target", axis=1)
-y = data["target"]
+X = data.drop(TARGET_COLUMN, axis=1)
+y = data[TARGET_COLUMN]
 
 # Step 3: Identify column types
 numerical_cols = X.select_dtypes(include=["int64", "float64"]).columns.tolist()
-categorical_cols = X.select_dtypes(include=["object", "category"]).columns.tolist()
+categorical_cols = X.select_dtypes(include=["object"]).columns.tolist()
 
 # Step 4: Define preprocessing for numeric features
 numeric_transformer = Pipeline(steps=[
-    ("imputer", SimpleImputer(strategy="mean")),       # Fill missing with mean
-    ("scaler", StandardScaler())                       # Standardize features
+    ("imputer", SimpleImputer(strategy="mean")),
+    ("scaler", StandardScaler())
 ])
 
 # Step 5: Define preprocessing for categorical features
 categorical_transformer = Pipeline(steps=[
-    ("imputer", SimpleImputer(strategy="most_frequent")),  # Fill missing with mode
-    ("encoder", OneHotEncoder(handle_unknown="ignore"))    # One-hot encode
+    ("imputer", SimpleImputer(strategy="most_frequent")),
+    ("encoder", OneHotEncoder(handle_unknown="ignore", sparse_output=False))  # Updated here
 ])
 
-# Step 6: Combine preprocessors using ColumnTransformer
+
+# Step 6: Combine preprocessing steps
 preprocessor = ColumnTransformer(transformers=[
     ("num", numeric_transformer, numerical_cols),
     ("cat", categorical_transformer, categorical_cols)
 ])
 
-# Step 7: Full pipeline
+# Step 7: Build full pipeline
 full_pipeline = Pipeline(steps=[
     ("preprocessor", preprocessor)
 ])
 
-# Step 8: Split the data
-X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+# Step 8: Split data
+X_train, X_test, y_train, y_test = train_test_split(
+    X, y, test_size=0.2, random_state=42
+)
 
-# Step 9: Fit and transform the training data
-X_train_preprocessed = full_pipeline.fit_transform(X_train)
+# Step 9: Fit and transform
+X_train_processed = full_pipeline.fit_transform(X_train)
+X_test_processed = full_pipeline.transform(X_test)
 
-# Step 10: Transform the test data
-X_test_preprocessed = full_pipeline.transform(X_test)
+# Step 10: Get final feature names
+ohe = full_pipeline.named_steps["preprocessor"].named_transformers_["cat"].named_steps["encoder"]
+cat_encoded_cols = ohe.get_feature_names_out(categorical_cols)
+final_feature_names = numerical_cols + list(cat_encoded_cols)
 
-# Optional: Convert transformed array to DataFrame (after OneHotEncoding and Scaling)
-# Note: Column names will be lost unless handled separately
-print("Preprocessed training data shape:", X_train_preprocessed.shape)
-print("Preprocessed test data shape:", X_test_preprocessed.shape)
+# Step 11: Convert to DataFrame
+X_train_df = pd.DataFrame(X_train_processed, columns=final_feature_names)
+X_test_df = pd.DataFrame(X_test_processed, columns=final_feature_names)
+
+# Step 12: Concatenate with target
+train_final = pd.concat([X_train_df, y_train.reset_index(drop=True).rename(TARGET_COLUMN)], axis=1)
+test_final = pd.concat([X_test_df, y_test.reset_index(drop=True).rename(TARGET_COLUMN)], axis=1)
+
+# Step 13: Save to CSV
+train_final.to_csv("processed_train.csv", index=False)
+test_final.to_csv("processed_test.csv", index=False)
+
