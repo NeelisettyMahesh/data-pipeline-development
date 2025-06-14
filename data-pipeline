@@ -1,0 +1,55 @@
+import pandas as pd
+from sklearn.model_selection import train_test_split
+from sklearn.pipeline import Pipeline
+from sklearn.compose import ColumnTransformer
+from sklearn.preprocessing import StandardScaler, OneHotEncoder
+from sklearn.impute import SimpleImputer
+
+# Step 1: Load your dataset
+# Replace with your CSV file path
+data = pd.read_csv("data.csv")
+
+# Step 2: Separate features and target
+X = data.drop("target", axis=1)
+y = data["target"]
+
+# Step 3: Identify column types
+numerical_cols = X.select_dtypes(include=["int64", "float64"]).columns.tolist()
+categorical_cols = X.select_dtypes(include=["object", "category"]).columns.tolist()
+
+# Step 4: Define preprocessing for numeric features
+numeric_transformer = Pipeline(steps=[
+    ("imputer", SimpleImputer(strategy="mean")),       # Fill missing with mean
+    ("scaler", StandardScaler())                       # Standardize features
+])
+
+# Step 5: Define preprocessing for categorical features
+categorical_transformer = Pipeline(steps=[
+    ("imputer", SimpleImputer(strategy="most_frequent")),  # Fill missing with mode
+    ("encoder", OneHotEncoder(handle_unknown="ignore"))    # One-hot encode
+])
+
+# Step 6: Combine preprocessors using ColumnTransformer
+preprocessor = ColumnTransformer(transformers=[
+    ("num", numeric_transformer, numerical_cols),
+    ("cat", categorical_transformer, categorical_cols)
+])
+
+# Step 7: Full pipeline
+full_pipeline = Pipeline(steps=[
+    ("preprocessor", preprocessor)
+])
+
+# Step 8: Split the data
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+
+# Step 9: Fit and transform the training data
+X_train_preprocessed = full_pipeline.fit_transform(X_train)
+
+# Step 10: Transform the test data
+X_test_preprocessed = full_pipeline.transform(X_test)
+
+# Optional: Convert transformed array to DataFrame (after OneHotEncoding and Scaling)
+# Note: Column names will be lost unless handled separately
+print("Preprocessed training data shape:", X_train_preprocessed.shape)
+print("Preprocessed test data shape:", X_test_preprocessed.shape)
