@@ -1,0 +1,9 @@
+Name,Gender,StudyHours,Attendance,Passed
+Alice,Female,15.0,90,Yes
+Bob,Male,10.0,80,No
+Charlie,Male,,70,No
+David,Male,8.0,60,No
+Eve,Female,12.0,85,Yes
+Frank,Male,,75,No
+Grace,Female,14.0,95,Yes
+Heidi,Female,11.0,88,Yes
